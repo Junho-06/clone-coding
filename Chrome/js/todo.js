@@ -1,5 +1,5 @@
 const toDoForm = document.getElementById("todo-form");
-const toDoInput = toDoForm.querySelector("input");
+const toDoInput = document.querySelector("#todo-form input");
 const toDoList = document.getElementById("todo-list");
 
 function deleteToDo(event){
@@ -7,10 +7,10 @@ function deleteToDo(event){
     li.remove();
 }
 
-function paintToDo(newToDo){
+function paintToDo(newTodo){
     const li = document.createElement("li");
     const span = document.createElement("span");
-    span.innerText = newToDo;
+    span.innerText = newTodo;
     const button = document.createElement("button");
     button.innerText = "❌";
     button.addEventListener("click", deleteToDo);
@@ -26,4 +26,4 @@ function handleToDoSubmit(event){
     paintToDo(newTodo);
 }
 
-todoForm.addEventListener("submit", handleToDoSubmit);
+toDoForm.addEventListener("submit", handleToDoSubmit);
