@@ -7,4 +7,4 @@
 * ### <a href="https://github.com/Junho-06/clone-coding/tree/master/Flask%20scrapper">Flask scrapper</a>
   * #### 위에서 만든 Web scrapper를 Flask를 통해 웹사이트로 만들어 다운로드, 검색 기능을 추가하였습니다.
 * ### <a href="https://github.com/Junho-06/clone-coding/tree/master/Chrome">Chrome</a>
-  * #### JavaScript의 기본적인 내용을 공부한며 만든 클론코딩 입니다.
+  * #### JavaScript의 기본적인 내용을 공부한며 만든 클론코딩 입니다. (아직 꾸미지 못함)
