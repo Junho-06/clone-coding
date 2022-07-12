@@ -1,5 +1,18 @@
-# **장고의 기본 요소 공부**
 > **장고의 기본적인 요소들을 ```파이보``` 라는 서비스를 만들면서 공부한 내용**
+---
+## **INDEX**
+1. **URL과 뷰**
+2. **모델**
+3. **장고 관리자**
+4. **조회와 템플릿**
+5. **URL 별칭**
+6. **데이터 저장**
+7. **스태틱**
+8. **부트스트랩**
+9. **템플릿 상속**
+10. **폼**
+---
+### 여기에는 기본적인 장고의 요소와 
 ---
 ## **앱(App)**
 * 장고를 개발하기 위해 프로젝트를 만들었다 하지만 프로젝트는 단독으로는 아무런 일도 할수 없음  
@@ -609,7 +622,7 @@ pybo/question_list.html
     |{{ question.subject }}|for문에 의해 대입된 question 객체의 제목을 출력|
 * 템플릿에서 사용한 question_list는 render함수로 전달한 "질문 목록" 데이터 임  
   
-**템플릿 태크**
+**템플릿 태그**
 * 장고에서 사용하는 탬플릿 태그는 다음 3가지 유형이 중요함
 1. 분기  
     * 분기문 태그의 사용법은 아래와 같음
@@ -737,3 +750,621 @@ def detail(request, question_id):
 ```
 * ```Question.objects.get(id=question_id)```를 ```get_object_or_404(Question, pk=question_id)```로 바꾸었음
 * 여기서 사용한 pk는 Question 모델의 기본키(Primary Key)에 해당하는 값을 의미함
+* 다시 ```http://localhost:8000/pybo/30/``` 페이지를 요청해보면 아래 사진처럼 500 대신 404오류 페이지가 출력되는것을 확인 가능함
+![404에러](https://wikidocs.net/images/page/70736/O_2-04_5.png)
+---
+## **URL 별칭**  
+**URL 하드코딩**
+* question_list.html 템플릿에 사용된 아래 링크를 보자
+```python
+<li><a href="/pybo/{{ question.id }}/">{{ question.subject }}</a></li>
+```
+* 위 링크는 질문 상세를 위한 URL 링크임, 하지만 이런 URL링크는 수정될 가능성이 있음
+* URL링크의 구조가 자주 변경된다면 템플릿에서 사용한 모든 URL들을 일일이 찾아가며 수정해야 하는 리스크가 발생함
+* 이런 문제점을 해결하기 위해서는 해당 URL에 대한 실제 링크 대신 링크의 주소가 1:1 매핑되어 있는 별칭을 사용해야 함  
+  
+**URL 별칭**
+* 링크의 주소 대신 별칭을 사용하려면 URL 매핑에 name 속성을 부여하면 됨
+* ```pybo/urls.py```파일을 아래와 같이 수정
+```python
+# urls.py
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path('', views.index, name='index'),
+    path('<int:question_id>/', views.detail, name='detail'),
+]
+```
+* ```http://localhost:8000/pybo/``` URL은 index, ```http://localhost:8000/pybo/2```와 같은 URL에는 detail 이라는 별칭을 부여한 것임  
+  
+**템플릿에서 URL 별칭 사용하기**
+* 이렇게 ```pybo/urls.py``` 파일에 별칭을 추가하면 템플릿에서 아래처럼 사용할 수 있음
+```python
+# question_list.html
+{% if question_list %}
+    <ul>
+    {% for question in question_list %}
+        <li><a href="{% url 'detail' question.id %}">{{ question.subject }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>질문이 없습니다.</p>
+{% endif %}
+```
+* 하드코딩 되어 있던 ```/pybo/{{ question.id }}``` 링크를 ```{% url 'detail' question.id %}``` 로 변경했음
+* 여기서 ```question.id```는 URL 매핑에 정의된 ```<int:question_id>```에 전달해야 하는 값을 의미함  
+  
+**파라미터명 전달**
+한 개의 파라미터를 전달할 경우에는 다음과 같이 사용했음
+```python
+{% url 'detail' question.id %}
+```
+이 때 다음처럼 파라미터 명을 함께 사용할수 있음
+```python
+{% url 'detail' question_id=question.id %}
+```
+만약 2개 이상의 파라미터를 사용해야 한다면 다음과 같이 공백 문자 이후에 덧 붙여주면 됨
+```python
+{% url 'detail' question_id=question.id page=2 %}
+```  
+  
+**URL 네임스페이스**
+* 현재는 pybo앱 하나만 사용중이지만 pybo앱 이외의 앱이 프로젝트에 추가 될수도 있음, 이런 경우 서로 다른 앱에서 동일한 URL 별칭을 사용하면 중복이 발생함
+* 위 문제를 해결하려면 ```pybo/urls.py``` 파일에 네임스페이스를 의미하는 app_name 변수를 지정해야함
+* 아래 코드처럼 ```pybo/urls.py``` 파일에 app_name을 추가하자
+```python
+# urls.py
+from django.urls import path
+
+from . import views
+
+app_name = 'pybo'
+
+urlpatterns = [
+    path('', views.index, name='index'),
+    path('<int:question_id>/', views.detail, name='detail'),
+]
+```
+* app_name을 pybo로 설정하고 ```http://localhost:8000/pybo/``` 페이지를 요청시 아래 사진과 같은 오류가 발생함
+![오류화면](https://wikidocs.net/images/page/70741/O_2-05_1.png)
+* 위 오류는 네임스페이스를 추가했기 때문에 발생한 오류임, 이 오류를 해결하려면 템플릿에서 사용한 URL 별칭에 네임스페이스를 아래와 같이 지정해야함
+```python
+{% if question_list %}
+    <ul>
+    {% for question in question_list %}
+        <li><a href="{% url 'pybo:detail' question.id %}">{{ question.subject }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>질문이 없습니다.</p>
+{% endif %}
+```
+* detail 앞에 pybo라는 네임스페이스를 붙여줌
+---
+## **데이터 저장**  
+**답변등록 폼**  
+* 질문 상세 템플릿에 아래처럼 답변을 저장할 수 있는 폼을 추가하자
+```python
+# question_detail.html
+<h1>{{ question.subject }}</h1>
+<div>
+    {{ question.content }}
+</div>
+<form action="{% url 'pybo:answer_create' question.id %}" method="post">
+{% csrf_token %}
+<textarea name="content" id="content" rows="15"></textarea>
+<input type="submit" value="답변등록">
+</form>
+```
+* 답변의 내용을 입력할 수 있는 텍스트창 과 답변을 저장 할 수 있는 "딥변등록" 버튼을 추가했음
+* 답변 저장을 위한 URL은 form 태그의 action 속성에 ```{% url 'pybo:answer_create' question.id %}```로 지정함
+* ```{% csrf_token %}```은 보안에 관련된 항목으로 form으로 전송한 데이터가 실제 웹 페이지에서 작성한 데이터인지를 판단하는 가늠자 역할을 함
+    * form태그 바로 밑에 ```{% csrf_token %}```태그를 항상 위치시켜야 함  
+      
+**CSRF란?**
+* CSRF는 웹 사이트 취약점 공격을 방지를 위해 사용하는 기술임, 장고가 CSRF 토큰 값을 세션을 통해 발행하고 웹 페이지에서는 폼 전송시에 해당 토큰을 함께 전송하여 실제 웹 페이지에서 작성된 데이터가 전달되는지를 검증하는 기술임
+* csrf_token 사용을 위해서는 CsrfViewMiddleware 미들웨어가 필요한데 이 미들웨어는 settings.py의 MIDDLEWARE 항목에 디폴트로 추가되어 있으므로 별도의 설정이 필요없음
+```python
+(... 생략 ...)
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+(... 생략 ...)
+```
+* 만약 csrf_token 기능을 사용하고 싶지 않다면 ```    'django.middleware.csrf.CsrfViewMiddleware',```문장을 주석처리 하면 됨  
+  
+**URL 매핑**
+* 질문 상세 페이지를 요청해보면 아래 사진같은 ```answer_create``` 별칭을 찾을 수 없다는 오류를 만나게 됨, 왜냐면 질문 상세 템플릿에 ```{% url 'pybo:answer_create' question.id %}```처럼 ```pybo:answer_create``` 별칭을 사용했기 때문임
+![에러화면2](https://wikidocs.net/images/page/73236/O_2-06_1.png)
+* 오류 해결을 위해 ```pybo/urls.py```에 다음과 같은 URL 매핑을 등록하자
+```python
+# urls.py
+from django.urls import path
+
+from . import views
+
+app_name = 'pybo'
+
+urlpatterns = [
+    path('', views.index, name='index'),
+    path('<int:question_id>/', views.detail, name='detail'),
+    path('answer/create/<int:question_id>/', views.answer_create, name='answer_create'),
+]
+```
+* answer_create 별칭에 해당하는 URL 매핑 규칙을 등록했음
+* 이제 ```http://locahost:8000/pybo/answer/create/2/```와 같은 페이지를 요청하면 URL 매핑 규칙에 의해 ```views.answer_create``` 함수가 호출될 것임  
+  
+**뷰 함수**
+* URL 매핑 규칙에 정의된 ```views.answer_create```함수를 ```pybo/views.py```파일에 아래처럼 추가
+```python
+# views.py
+from django.shortcuts import render, get_object_or_404, redirect
+from django.utils import timezone
+from .models import Question
+
+(... 생략 ...)
+
+def answer_create(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    question.answer_set.create(content=request.POST.get('content'), create_date=timezone.now())
+    return redirect('pybo:detail', question_id=question.id)
+```
+* answer_create 함수의 매개변수 question_id는 URL 매핑에 의해 그 값이 전달됨, 만약 ```http://locahost:8000/pybo/answer/create/2/``` 라는 페이지를 요청하면 매개변수 question_id에는 2라는 값이 전달됨
+* 답변 등록시 텍스트창에 입력한 내용은 answer_create 함수의 첫번째 매개변수인 request 객체를 통해 읽을 수 있음
+    * 즉, ```request.POST.get('content')```로 텍스트창에 입력한 내용을 읽을수 있음
+    * ```request.POST.get('content')```는 POST로 전송된 폼 데이터 항목 중 content 값을 의미함
+* 답변을 생성하기 위해 ```question.answer_set.create```를 사용함
+    * ```question.answer_set```은 질문의 답변을 의미함
+    * Question과 Answer모델은 서로 ```ForeignKey```로 연결되어 있기 때문에 이처럼 사용을 할수 있음
+* 답변을 저장하는 또 다른 방법은 아래처럼 Answer 모델을 직접 사용하는 방법임
+```python
+# views.py
+(... 생략 ...)
+from .models import Question, Answer
+
+(... 생략 ...)
+
+def answer_create(request, question_id):
+    """
+    pybo 답변등록
+    """
+    question = get_object_or_404(Question, pk=question_id)
+    answer = Answer(question=question, content=request.POST.get('content'), create_date=timezone.now())
+    answer.save()
+    return redirect('pybo:detail', question_id=question.id)
+```
+* 어떤것을 사용해도 결과는 동일함
+* 답변을 생성한 후 질문 상세 화면을 다시 보여주기 위해 redirect 함수를 사용했음
+    * redirect 함수는 페이지 이동을 위한 함수임
+* ```pybo:detail```별칭에 해당하는 페이지로 이동하기 위해 redirect 함수를 사용했음
+* ```pybo:detail```별칭에 해당하는 URL은 question_id가 필요하므로 ```question.id```를 인수로 전달함  
+
+**답변 저장**
+* 질문 상세 화면을 호출해 보자
+![답변 저장](https://wikidocs.net/images/page/73236/O_2-06_2.png)
+* 텍스트 창에 아무 값이나 입력하고 답변을 등록해 보면 화면에는 아무런 변화가 없음
+    * 왜냐면 우리는 아직 등록된 답변을 표시하는 기능을 템플릿에 추가하지 않았기 때문임  
+  
+**답변 조회**
+* 등록된 답변을 질문 상세 화면에 표시하려면 아래처럼 질문 상세 템플릿을 수정해야 함
+```python
+# question_detail.html
+<h1>{{ question.subject }}</h1>
+<div>
+    {{ question.content }}
+</div>
+<h5>{{ question.answer_set.count }}개의 답변이 있습니다.</h5>
+<div>
+    <ul>
+    {% for answer in question.answer_set.all %}
+        <li>{{ answer.content }}</li>
+    {% endfor %}
+    </ul>
+</div>
+<form action="{% url 'pybo:answer_create' question.id %}" method="post">
+{% csrf_token %}
+<textarea name="content" id="content" rows="15"></textarea>
+<input type="submit" value="답변등록">
+</form>
+```
+* 중간 부분에 질문에 등록된 답변을 확인할 수 있는 영역을 추가했음
+* ```question.answer_set.count```는 답변의 총 갯수를 의미함
+* 위처럼 수정하고 다시 질문상세 화면을 호출하면 아래사진과 비슷한 화면을 볼수 있음
+![답변출력](https://wikidocs.net/images/page/73236/C_2-06_3.png)
+* 이제 답변을 저장하고 확인할 수 있게 되었음
+---
+## **스태틱**
+* 디자인을 적용하기 위해서는 스타일시트(stylesheet, CSS파일)를 사용해야함  
+  
+**스태틱(static) 디렉터리**
+* 스타일시트 파일은 장고의 스태틱 디렉터리에 저장해야함
+* 스태틱 디렉터리도 템플릿 디렉터리와 마찬가지로 ```config/settings.py``` 파일에 등록하여 사용함
+* 아래처럼 ```config/settings.py```파일을 수정하자
+```python
+# settings.py
+(... 생략 ...)
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+(... 생략 ...)
+```
+* ```STATICFILES_DIRS```이라는 리스트 변수를 추가했음
+* STATICfILES_DIRS에는 ```BASE_DIR / 'static'``` 디렉터리를 추가함
+    * ```BASE_DIR / 'static'```은 ```프로젝트명\static``` 디렉터리를 의미하므로 아래처럼 static 디렉터리를 생성
+```
+C:\경로...\프로젝트명> mkdir static
+```  
+  
+**스타일시트**
+* style.css 파일을 생성후 아래코드를 작성하자
+```css
+textarea {
+    width:100%;
+}
+
+input[type=submit] {
+    margin-top:10px;
+}
+```
+* style.css 파일에는 상세화면에 적용할 스타일을 정의했음
+    * 답변 등록시 사용하는 텍스트 창의 넓이를 100%로 하고 "답변등록" 버튼 상단에 10픽셀의 마진을 설정함  
+      
+**템플릿에 스타일 적용**
+* 작성한 스타일시트 파일을 질문 상세 템플릿에 적용하자
+```python
+# question_detail.html
+{% load static %}
+<link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+<h1>{{ question.subject }}</h1>
+(... 생략 ...)
+```
+* 템플릿에 스타일스트와 같은 스태틱 파일을 사용하기 위해서는 템플릿 최상단에 ```{% load static %}```태그를 먼저 삽입해야함
+    * 그래야만 ```{% static ... %}``` 와 같은 템플릿 태그를 사용할수 있음
+* 질문 상세 화면이 변경된 화면은 아래 와 같음
+![CSS추가](https://wikidocs.net/images/page/70804/O_2-07_1.png)
+* 스태틱 디렉터리가 새로 생성되면 서버를 재시작 해야함
+---
+## **부트스트랩**
+* 부트스트랩은 디자이너의 도움 없이도 개발자 혼자서 괜찮은 수준의 웹 페이지를 만들수 있게 도와주는 프레임워크 임  
+## [부트스트랩 다운로드](https://getbootstrap.com/docs/5.1/getting-started/download/)  
+  
+**부트스트랩 적용**
+* 질문 목록 템플릿에 부트스트랩을 아래처럼 적용
+```python
+# question_list.html
+{% load static %}
+<link rel="stylesheet" type="text/css" href="{% static 'bootstrap.min.css' %}">
+{% if question_list %}
+(... 생략 ...)
+```
+* 템플릿도 부트스트랩을 사용하도록 아래처럼 수정
+```python
+# question_list.html
+{% load static %}
+<link rel="stylesheet" type="text/css" href="{% static 'bootstrap.min.css' %}">
+<div class="container my-3">
+    <table class="table">
+        <thead>
+        <tr class="table-dark">
+            <th>번호</th>
+            <th>제목</th>
+            <th>작성일시</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if question_list %}
+        {% for question in question_list %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>
+                <a href="{% url 'pybo:detail' question.id %}">{{ question.subject }}</a>
+            </td>
+            <td>{{ question.create_date }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="3">질문이 없습니다.</td>
+        </tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+```
+* 기존에는 ```<ul>```태그로 심플하게 작성했던 질문 목록의 테이블 구조로 변경함
+    * 번호와 작성일시 항목도 추가 하였음
+    * 번호는 for 문의 현재 순서를 의미하는 ```{{ forloop.counter }}```를 이용함
+* 여기서 사용한 ```class="container my-3"```, ```class="table"```, ```class="table-dark"``` 등은 부트스트랩 스타일에 정의되어 있는 클래스들임
+* 부트스트랩에 대한 자세한 내용은 아래 링크 참조  
+## [링크](https://getbootstrap.com/docs/5.1/getting-started/introduction/)  
+* 서버를 구동하면 아래처럼 부트스랩이 적용된 질문 목록을 볼수 있음
+![부트스트랩적용](https://wikidocs.net/images/page/70838/O_2-08_2.png)
+* 질문 상세 템플릿에도 아래처럼 부트스트랩을 적용하자
+```python
+# question_detail.html
+{% load static %}
+<link rel="stylesheet" type="text/css" href="{% static 'bootstrap.min.css' %}">
+<div class="container my-3">
+    <!-- 질문 -->
+    <h2 class="border-bottom py-2">{{ question.subject }}</h2>
+    <div class="card my-3">
+        <div class="card-body">
+            <div class="card-text" style="white-space: pre-line;">{{ question.content }}</div>
+            <div class="d-flex justify-content-end">
+                <div class="badge bg-light text-dark p-2">
+                    {{ question.create_date }}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 답변 -->
+    <h5 class="border-bottom my-3 py-2">{{question.answer_set.count}}개의 답변이 있습니다.</h5>
+    {% for answer in question.answer_set.all %}
+    <div class="card my-3">
+        <div class="card-body">
+            <div class="card-text" style="white-space: pre-line;">{{ answer.content }}</div>
+            <div class="d-flex justify-content-end">
+                <div class="badge bg-light text-dark p-2">
+                    {{ answer.create_date }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    <!-- 답변 등록 -->
+    <form action="{% url 'pybo:answer_create' question.id %}" method="post" class="my-3">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="content" class="form-label">답변내용</label>
+            <textarea name="content" id="content" class="form-control" rows="10"></textarea>
+        </div>
+        <input type="submit" value="답변등록" class="btn btn-primary">
+    </form>
+</div>
+```
+* 질문이나 답변은 하나의 뭉치에 해당하므로 부트스트랩의 card 컴포넌트를 사용했음
+* 부트스트랩 card 컴포넌트 : https://getbootstrap.com/docs/5.1/components/card/
+* 질문 상세 템플릿에 사용한 부트스트랩 클래스
+    |부트스트랩 클래스|설명|
+    |:---|:---|
+    |```card```, ```card-body```, ```card-text```|부트스트랩 Card 컴포넌트|
+    |```badge```|부트스트랩 Badge 컴포넌트|
+    |```form-control```, ```form-label```|부트스트랩 Form 컴포넌트|
+    |```border-bottom```|아래방향 테두리 선|
+    |```my-3```|상하 마진값 3|
+    |```py-2```|상하 패딩값 2|
+    |```p-2```|상하좌우 패딩값 2|
+    |```d-flex justify-content-end```|컴포넌트의 우측 정렬|
+    |```bg-light```|연회색 배경|
+    |```text-dark```|검은색 글씨|
+    |```text-start```|좌측 정렬|
+    |```btn btn-primary```|부트스트랩 버튼 컴포넌트|
+* 질문 내용과 답변 내용에는 ```style="white-space: pre-line;"```과 같은 스타일을 지정해주었음, 글 내용의 줄 바꿈을 정상적으로 표시하기위해 적용한 스타일임
+* 부트스트랩을 적용한 질문 상세 화면은 아래와 같음
+![부트스트랩적용](https://wikidocs.net/images/page/70838/O_2-08_3.png)
+---
+## **템플릿 상속**
+* 지금까지 작성한 질문 목록, 질문 상세 템플릿은 표준 HTML 구조가 아님, 어떤 웹 브라우저를 사용하더라도 웹 페이지가 동일하게 보이고 정상적으로 작동하게 하려면 반드시 웹 표준을 지키는 HTML 문서를 작성해야함  
+  
+**표준 HTML 구조**
+* 표준 HTML 문서의 구조는 html, head, body 엘리먼트가 있어야하며, CSS 파일 링크는 head 엘리먼트 안에 있어야 함, 또한 head 엘리먼트 안에는 meta, title 엘리먼트 등이 포함되어야 함  
+  
+**태그와 엘리먼트**
+* ```<..>``` 형식으로 쓰여있는게 태그 이고 ```<...> ~ </...>``` 처럼 태그로 시작해서 태그로 닫힌 구간은 그 태그의 엘리먼트 라고함  
+  
+**템플릿 상속**
+* 질문 목록, 질문 상세 템플릿을 표준 HTML 구조가 되도록 수정하자
+* 템플릿 파일들을 모두 표준 HTML 구조로 변경하면 body 엘리먼트 바깥 부분은 모두 같은 내용으로 중복됨, 그러면 CSS파일 이름이 변경되거나 새로운 CSS파일이 추가될 때마다 모든 템플릿 파일을 일일이 수정해야함
+* 장고는 이런 중복과 불편함 해소를 위해 템플릿 상속 기능을 제공함
+* 템플릿 상속은 기본 틀이 되는 템플릿을 먼저 작성하고 다른 템플릿에서 그 템플릿을 상속해 사용하는 방법임  
+  
+**base.html**
+* 기본 틀이 되는 ```base.html``` 템플릿을 아래처럼 작성
+```python
+# base.html
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'bootstrap.min.css' %}">
+    <!-- pybo CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+    <title>Hello, pybo!</title>
+</head>
+<body>
+<!-- 기본 템플릿 안에 삽입될 내용 Start -->
+{% block content %}
+{% endblock %}
+<!-- 기본 템플릿 안에 삽입될 내용 End -->
+</body>
+</html>
+```
+* ```base.html``` 템플릿은 모든 템플릿이 상속해야 하는 템플릿으로 표준 HTML 문서의 기본 틀이 됨
+* body 엘리먼트 안의 ```{% block content %}``` 와 ```{% endblock %}``` 템플릿 태그는 ```base.html```을 상속한 템플릿에서 개별적으로 구현해야 하는 영역이 됨  
+  
+**question_list.html**
+* question_list.html 템플릿을 아래처럼 변경
+```python
+# question_list.html
+# {% load static %}
+# <link rel="stylesheet" type="text/css" href="{% static 'bootstrap.min.css' %}">
+# 위 두문장 삭제  
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-3">
+    <table class="table">
+
+        (... 생략 ...)
+
+    </table>
+</div>
+{% endblock %}
+```
+* ```base.html``` 템플릿을 상속하기 위해 ```{% extends 'base.html' %}``` 처럼 extends 템플릿 문법을 사용했음
+* 상단의 두 줄은 ```base.html```에 이미 있는 내용이므로 삭제했음, 그리고 ```{% block content %}```와 ```{% endblock %}``` 사이에 ```question_list.html``` 에서만 쓰이는 내용을 작성했음
+* 이제 ```question_list.html```은 ```base.html``` 템플릿을 상속받아 표준 HTML문서로 바뀌게 됨  
+  
+**question_detail.html**
+* ```question_detail.html```도 마찬가지 방법으로 수정하자
+```python
+# question_detail.html
+# {% load static %}
+# <link rel="stylesheet" type="text/css" href="{% static 'bootstrap.min.css' %}">  
+# 위 두 문장 삭제
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-3">
+    <h2 class="border-bottom py-2">{{ question.subject }}</h2>
+
+    (... 생략 ...)
+
+    </form>
+</div>
+{% endblock %}
+```
+* ```{% extends 'base.html' %}``` 템플릿 태그를 맨 위에 추가하고 기존 내용 위 아래로 ```{% block content %}```와 ```{% endblock %}```를 작성했음
+* 템플릿 상속을 적용한 후 질문 목록, 질문 상세를 조회해 보면 화면에 보여지는 것은 동일하지만 HTML구조로 변경된 것을 확인할 수 있음
+![HTML구조](https://wikidocs.net/images/page/70851/O_2-09_1.png)  
+  
+**style.css**
+* 부트스트랩 적용으로 인해 ```style.css``의 내용은 필요가 없어졌으므로 기존 내용을 모두 삭제하는데 이후 부트스트랩으로 표현할 수 없는 스타일을 위해 사용할것이기 때문에 파일삭제 말고 내용만 삭제하자
+---
+## **폼**
+* 질문 등록 기능을 만들자  
+  
+**질문 등록**
+* 질문을 등록하려면 먼저 "질문 등록하기" 버튼을 만들어야 함, 아래처럼 질문 목록 하단에 "질문 등록하기" 버튼을 생성하자
+```python
+# question_list.html
+   (... 생략 ...)
+    </table>
+    <a href="{% url 'pybo:question_create' %}" class="btn btn-primary">질문 등록하기</a>
+</div>
+{% endblock %}
+```
+* ```<a href="...">```과 같은 링크이지만 부트스트랩의 ```btn btn-primary``` 클래스를 적용하면 버튼으로 보임
+* 버튼을 클릭하면 ```pybo:question_create```별칭에 해당되는 URL이 호출됨  
+  
+**URL 매핑**
+* ```pybo:question_create``` 별칭에 해당되는 URL 매핑 규칙을 추가하자
+```python
+# urls.py
+(... 생략 ...)
+urlpatterns = [
+    (... 생략 ...)
+    path('question/create/', views.question_create, name='question_create'),
+]
+```
+* ```views.question_create``` 함수를 호출하도록 매핑함  
+  
+**폼**
+* ```views.question_create``` 함수를 작성해야함, 하지만 뷰 함슈를 작성하기 전에 폼에 대해서 먼저 알아보자
+    * 폼은 쉽게 말해 페이지 요청시 전달되는 파라미터들을 쉽게 관리하기 위해 사용하는 클래스 임
+    * 폼은 필수 파라미터의 값이 누락되지 않았는지, 파라미터의 형식은 적절한지 등을 검증할 목적으로 사용함
+    * 이 외에도 HTML을 자동으로 생성하거나 폼에 연결된 모델을 이용하여 데이터를 저장하는 기능도 있음
+* 먼저 QuestionForm을 forms.py 파일에 다음처럼 작성하자
+    * forms.py 파일은 신규로 작성해야 함
+```python
+# forms.py
+from django import forms
+from pybo.models import Question
+
+
+class QuestionForm(forms.ModelForm):
+    class Meta:
+        model = Question  # 사용할 모델
+        fields = ['subject', 'content']  # QuestionForm에서 사용할 Question 모델의 속성
+```
+* QeustionForm은 모델폼(```forms.ModelForm```)을 상속했음, 장고의 폼은 일반 폼(```forms.Form```)과 모델폼(```forms.ModelForm```)이 있는데 모델 폼은 모델과 연결된 폼으로 폼을 저장하면 연결된 모델의 데이터를 저장할수 있는 폼임
+    * 모델 폼은 이너 클래스인 ```Meta```클래스가 반드시 필요함, ```Meta```클래스에는 사용할 모델과 모델의 속성을 적어야함
+* 즉, QuestionForm은 Question 모델과 연결된 폼이고 속성으로 Question 모델의 subject와 content를 사용한다고 정의한 것임  
+  
+**뷰 함수**
+* ```views.question_create``` 함수를 아래와 같이 작성하자
+```python
+# views.py
+from django.shortcuts import render, get_object_or_404, redirect
+from django.utils import timezone
+from .models import Question
+from .forms import QuestionForm
+
+(... 생략 ...)
+
+def question_create(request):
+    form = QuestionForm()
+    return render(request, 'pybo/question_form.html', {'form': form})
+```
+* question_create 함수는 위에서 작성한 QuestionForm을 사용했음
+* render 함수에 전달한 ```{'form': form}```은 템플릿에서 질문 등록시 사용할 폼 엘리먼트를 생성할 때 쓰임  
+  
+**템플릿**
+* ```pybo/question_form.html``` 템플릿을 아래와 같이 작성하자
+```python
+# question_form.html
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h5 class="my-3 border-bottom pb-2">질문등록</h5>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">저장하기</button>
+    </form>
+</div>
+{% endblock %}
+```
+* 템플릿에서 사용한 ```{{ form.as_p }}```의 form은 question_create 함수에서 전달한 QuestionForm의 객체임
+* ```{{ form.as_p }}```는 폼에 정의한 subject, content 속성에 해당하는 HTML 코드를 자동으로 생성함
+* ```<form method="post">``` 처럼 form 태그에 action 속성을 지정하지 않았다는 점을 잘 보자
+    * 보통 form 태그에는 항상 action 속성을 지정하여 submit 실행시 action에 정의돈 URL로 폼을 전송해야 함
+    * 여기서는 특별하게 action 속성을 지정하지 않음
+    * form 태그에 action 속성을 지정하지 않으면 현재 페이지의 URL이 디폴트 action으로 설정됨
+    * action 속성을 아래처럼 명확하게 지정하여도 됨
+    ```
+    <form method="post" action="{% url 'pybo:question_create' %}">
+    ```
+* 위처럼 하게 되면 question_form.html 템플릿은 "질문 등록" 에서만 사용 가능함
+* 이후에 진행할 "질문 수정" 에서는 이 템플릿을 활용할 수가 없음
+    * 왜냐면 질문 수정일 경우에는 action 값을 달리해야하기 떄문임
+* 동일한 템플릿을 여러 기능에서 함께 사용할 경우에는 이처럼 form의 action 속성을 비워두는 트릭을 종종 사용함
+---
+## **GET과 POST**
+* 질문 목록 화면 하단에 "질문 등록하기" 버튼이 추가되었음, "질문 등록하기" 버튼을 클릭하면 "질문 등록" 화면이 나타남, subject와 content 입력 창에 아무 값이나 입력하고 "저장하기" 버튼을 클릭해 보면 아무런 반응이 없을것임
+    * 왜냐면 question_create 함수에 데이터를 저장하는 코드를 아직 작성하지 않았기 때문임
+* 아래처럼 question_create 함수를 수정하자
+```python
+# views.py
+if request.method == 'POST':
+    form = QuestionForm(request.POST)
+    if form.is_valid():
+        question = form.save(commit=False)
+        question.create_date = timezone.now()
+        question.save()
+        return redirect('pybo:index')
+else:
+    form = QuestionForm()
+context = {'form': form}
+return render(request, 'pybo/question_form.html', context)
+```
+* 동일한 URL 요청을 POST, GET 요청 방식에 따라 다르게 처리함
+* 질문 목록 화면에서 "질문 등록하기" 버튼을 클릭한 경우에는 ```/pybo/question/create/```페이지가 GET 방식으로 요청되어 question_create 함수가 실행됨
+    * 왜냐면 ```<a href="{% url 'pybo:question_create' %}" class="btn btn-primary">질문 등록하기</a>```와 같이 링크를 통해 페이지를 요청할 경우에는 무조건 GET 방식이 사용되기 때문임
+    * 따라서 이 경우에는 ```request.method```값이 GET이 되어 ```if..else..```구문에서 else 구문을 타게 되어 질문을 등록하는 화면을 렌더링함
+* 질문 등록 화면에서 subject, content 항목에 값을 기입하고 "저장하기" 버튼을 누르면 이번에는 ```/pybo/question/create/```페이지를 POST 방식으로 요청함
+    * 왜냐면 form 태그에 action 속성이 지정되지 않으면 현재 페이지가 디폴트 action으로 설정되기 때문임
