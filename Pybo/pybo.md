@@ -735,3 +735,5 @@ def detail(request, question_id):
     context = {'question': question}
     return render(request, 'pybo/question_detail.html', context)
 ```
+* ```Question.objects.get(id=question_id)```를 ```get_object_or_404(Question, pk=question_id)```로 바꾸었음
+* 여기서 사용한 pk는 Question 모델의 기본키(Primary Key)에 해당하는 값을 의미함
