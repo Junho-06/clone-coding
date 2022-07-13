@@ -1575,4 +1575,3 @@ def answer_create(request, question_id):
 ---
 ##  여기까지 하면 장고의 기본 요소들은 익힘
 * 정리한 내용을 보면서 다시 공부하자
-* Pybo 서비스 기능들은 클론코딩으로 만들자
