@@ -1088,7 +1088,7 @@ input[type=submit] {
     * 번호는 for 문의 현재 순서를 의미하는 ```{{ forloop.counter }}```를 이용함
 * 여기서 사용한 ```class="container my-3"```, ```class="table"```, ```class="table-dark"``` 등은 부트스트랩 스타일에 정의되어 있는 클래스들임
 * 부트스트랩에 대한 자세한 내용은 아래 링크 참조  
-## [링크](https://getbootstrap.com/docs/5.1/getting-started/introduction/)  
+> ## [링크](https://getbootstrap.com/docs/5.1/getting-started/introduction/)  
 * 서버를 구동하면 아래처럼 부트스랩이 적용된 질문 목록을 볼수 있음
 ![부트스트랩적용](https://wikidocs.net/images/page/70838/O_2-08_2.png)
 * 질문 상세 템플릿에도 아래처럼 부트스트랩을 적용하자
@@ -1368,3 +1368,211 @@ return render(request, 'pybo/question_form.html', context)
     * 따라서 이 경우에는 ```request.method```값이 GET이 되어 ```if..else..```구문에서 else 구문을 타게 되어 질문을 등록하는 화면을 렌더링함
 * 질문 등록 화면에서 subject, content 항목에 값을 기입하고 "저장하기" 버튼을 누르면 이번에는 ```/pybo/question/create/```페이지를 POST 방식으로 요청함
     * 왜냐면 form 태그에 action 속성이 지정되지 않으면 현재 페이지가 디폴트 action으로 설정되기 때문임
+* 질문 등록 화면에서 "저장하기" 버튼을 클릭하면 question_create 함수가 실행되고 ```request.method``` 값은 POST가 되어 아래 코두거 실행될것임
+```python
+    if request.method == 'POST':
+        form = QuestionForm(request.POST)
+        if form.is_valid():  # 폼이 유효하다면
+            question = form.save(commit=False)  # 임시 저장하여 question 객체를 리턴받는다.
+            question.create_date = timezone.now()  # 실제 저장을 위해 작성일시를 설정한다.
+            question.save()  # 데이터를 실제로 저장한다.
+            return redirect('pybo:index')
+```
+* GET 방식에서는 ```form = QuestionForm()``` 처럼 QuestionForm을 인수 없이 생성했지만 POST 방식에서는 ```form = QuestionForm(request.POST)``` 처럼 ```request.POST```를 인수로 생성했음
+    * ```request.POST```를 인수로 QuestionForm을 생성할 경우에는 ```request.POST```에 담긴 subject, content 값이 QuestionForm의 subject, content 속성에 자동으로 저장되어 객체가 생성됨
+    * ```request.POST```에는 화면에서 사용자가 입력한 내용들이 담겨있음
+* ```form.is_valid()```는 form이 유효한지를 검사함, 만약 form에 저장된 subject, content의 값이 올바르지 않다면 form에는 오류 메시지가 저장되고 ```form.is_valid()```가 실패하여 다시 질문 등록 화면을 렌더링 할 것임
+    * 이 때 form에는 오류 메시지가 저장되므로 화면에 오류를 표시할 수 있음
+* form이 유효하다면 ```if form.is_valid():```이후의 문장이 수행되어 질문 데이터가 생성됨
+* ```question = form.save(commit=False)```는 form에 저장된 데이터로 Question 데이터를 저장하기 위한 코드임
+    * QuestionForm이 Question 모델과 연결된 모델 폼이기 때문에 이와 같이 사용할 수 있음
+    * ```commit=False```는 임시 저장을 의미함 즉, 실제 데이터는 아직 데이터베이스에 저자오디지 않은 상태를 말함
+    * ```form.save(commit=False)```대신 ```form.save()```를 수행하면 Question 모델의 create_date에 값이 없다는 오류가 발생할 것임
+        * 왜냐면 QuestionForm에는 현재 subject, content 속성만 정의되어 있고 create_date 속성은 없기 때문임
+* 이러한 이유로 임시 저장을 하여 question 객체를 리턴받고 create_date에 값을 설정한 후 ```question.save()```로 실제 데이터를 저장하는 것임
+* create_date 속성은 데이터 저장 시점에 생성해야 하는 값이므로 QuestionForm에 등록하여 사용하지 않음  
+* 질문을 등록하면 아래처럼 생성되는것을 볼수 있음
+![질문 등록](https://wikidocs.net/images/page/70855/C_2-10_4.png)  
+  
+**폼 위젯**
+* ```{{ form.as_p }}``` 태그는 HTML 코드를 자동으로 생성하기 때문에 부트스트랩을 적용할 수가 없음
+* QuestionForm을 아래처럼 조금 수정하면 어느정도 해결 가능
+```python
+# forms.py
+from django import forms
+from pybo.models import Question
+
+
+class QuestionForm(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = ['subject', 'content']
+        widgets = {
+            'subject': forms.TextInput(attrs={'class': 'form-control'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 10}),
+        }
+```
+* 위와 같이 widgets 속성을 지정하면 subject, content 입력 필드에 ```form-control```과 같은 부트스트랩 클래스를 추가할 수 있게됨
+* 다시 질문등록을 보면 아래처럼 적용된걸 확인 가능
+![질문등록수정](https://wikidocs.net/images/page/70855/O_2-10_5.png)  
+  
+**폼 레이블**
+* 질문 등록 화면에 표시되는 'Subject', 'Content'를 영문이 아니라 한글로 표시하고 싶다면 아래처럼 labels 속성을 지정하면 됨
+```python
+# forms.py
+from django import forms
+from pybo.models import Question
+
+
+class QuestionForm(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = ['subject', 'content']
+        widgets = {
+            'subject': forms.TextInput(attrs={'class': 'form-control'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 10}),
+        }
+        labels = {
+            'subject': '제목',
+            'content': '내용',
+        }
+```
+* 그럼 아래처럼 바뀌게 됨
+![한국어로바꿈](https://wikidocs.net/images/page/70855/C_2-10_6.png)
+* 장고 폼에 대한 자세한 내용은 아래 링크
+> ## [링크](https://docs.djangoproject.com/en/4.0/topics/forms/)  
+  
+**수동 폼 작성**
+* ```{{ form.as_p }}```를 사용하면 빠르게 템플릿을 만들수 있긴 하지만 HTML 코드가 자동으로 생성되므로 디자인 측면에서 많은 제한이 생김
+    * 또 디자인 영역과 서버 프로그램 영역이 혼재되어 웹 디자이너와 개발자의 역할을 분리하기도 모호해짐
+* 직접 HTML 코드를 작성하는 방법을 사용하기 위해서는 ```forms.py```에 있는 widget 속성을 제거해야함
+* 그리고 질문 등록 템플릿을 아래처럼 수정
+```python
+# question_form.html
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h5 class="my-3 border-bottom pb-2">질문등록</h5>
+    <form method="post">
+        {% csrf_token %}
+        <!-- 오류표시 Start -->
+        {% if form.errors %}
+        <div class="alert alert-danger" role="alert">
+            {% for field in form %}
+            {% if field.errors %}
+            <div>
+                <strong>{{ field.label }}</strong>
+                {{ field.errors }}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        <!-- 오류표시 End -->
+        <div class="mb-3">
+            <label for="subject" class="form-label">제목</label>
+            <input type="text" class="form-control" name="subject" id="subject"
+                   value="{{ form.subject.value|default_if_none:'' }}">
+        </div>
+        <div class="mb-3">
+            <label for="content" class="form-label">내용</label>
+            <textarea class="form-control" name="content"
+                      id="content" rows="10">{{ form.content.value|default_if_none:'' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">저장하기</button>
+    </form>
+</div>
+{% endblock %}
+```
+* ```{{ form.as_p }```로 자동으로 생성되는 HTML 대신 제목과 내용에 해당되는 HTML 코드임
+* question_create 함수에서 ```form.is_valid()```가 실패할 경우 발생하는 오류의 내용을 표시하기 위해 오류를 표시하는 영역을 추가했음
+* 제목 항목의 value 에는 ```{{ form.subject.value|default_if_none:'' }}``` 처럼 값을 대입해 주었는데 이것은 오류가 발생했을 경우 기존에 입력했던 값을 유지하기 위함임
+* ```|default_if_none:''```의 의미는 폼 데이터(```form.subject.value```)에 값이 없을 경우 None 이라는 문자열이 표시되는데 None 대신 공백으로 표시하라는 의미의 템플릿 필터임
+    * 장고의 템플릿 필터는 ```|default_if_none:''``` 처럼 ```|``` 기호와 함께 사용됨
+* 위처럼 수정하고 "질문등록" 화면에서 제목에만 "TEST" 라고 입력하고 "내용"은 비워둔 채 "저장하기" 버튼을 클릭해보자
+![에러발생](https://wikidocs.net/images/page/70855/O_2-10_7.png)
+* 위 사진처럼 "내용"에 아무런 값도 입력하지 않았기 떄문에 "내용"을 입력하라는 오류메시지를 볼 수 있음
+* "제목"에 입력했던 "TEST"는 사라지지 않고 계속 유지되는 것도 확인할 수 있음
+* 단변 등록에 장고 폼을 적용하자
+* 답변을 등록할때 사용할 AnswerForm을 ```pybo/forms.py```파일에 아래처럼 작성
+```python
+# forms.py
+from django import forms
+from pybo.models import Question, Answer
+
+(... 생략 ...)
+
+class AnswerForm(forms.ModelForm):
+    class Meta:
+        model = Answer
+        fields = ['content']
+        labels = {
+            'content': '답변내용',
+        }
+```
+* answer_create 함수를 아래처럼 수정
+```python
+# views.py
+(... 생략 ...)
+from django.http import HttpResponseNotAllowed
+from .forms import QuestionForm, AnswerForm
+(... 생략 ...)
+
+def answer_create(request, question_id):
+    """
+    pybo 답변등록
+    """
+    question = get_object_or_404(Question, pk=question_id)
+    if request.method == "POST":
+        form = AnswerForm(request.POST)
+        if form.is_valid():
+            answer = form.save(commit=False)
+            answer.create_date = timezone.now()
+            answer.question = question
+            answer.save()
+            return redirect('pybo:detail', question_id=question.id)
+    else:
+        return HttpResponseNotAllowed('Only POST is possible.')
+    context = {'question': question, 'form': form}
+    return render(request, 'pybo/question_detail.html', context)
+```
+* question_create 와 같은 방법으로 AnswerForm을 이용하도록 변경했음
+* 답변 등록은 POST방식만 사용되기 때문에 GET 방식으로 요청할 경우에는 HttpResponseNotAllowed 오류가 발생하도록 함
+* 질문 상세 템플릿도 오류를 표시하기 위한 영역을 아래처럼 추가
+```python
+# question_detail.html
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-3">
+    (... 생략 ...)
+    <form action="{% url 'pybo:answer_create' question.id %}" method="post" class="my-3">
+        {% csrf_token %}
+        <!-- 오류표시 Start -->
+        {% if form.errors %}
+        <div class="alert alert-danger" role="alert">
+            {% for field in form %}
+            {% if field.errors %}
+            <div>
+                <strong>{{ field.label }}</strong>
+                {{ field.errors }}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        <!-- 오류표시 End -->
+        <div class="form-group">
+            <textarea name="content" id="content" class="form-control" rows="10"></textarea>
+        </div>
+        <input type="submit" value="답변등록" class="btn btn-primary">
+    </form>
+</div>
+{% endblock %}
+```
+* 위처럼 수정하고 답변등록에 답변 내용 없이 답변을 등록하려고 하면 아래와 같은 오류메시지가 표시됨
+![오류2](https://wikidocs.net/images/page/70855/C_2-10_8.png)  
+---
+##  여기까지 하면 장고의 기본 요소들은 익힘
+* 정리한 내용을 보면서 다시 공부하자
+* Pybo 서비스 기능들은 클론코딩으로 만들자
