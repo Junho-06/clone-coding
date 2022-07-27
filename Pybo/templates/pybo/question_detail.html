@@ -1,6 +1,14 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container my-3">
+    {% if messages %}
+    <div class="alert alert-danger my-3" role="alert">
+    {% for message in messages %}
+        <strong>{{ message.tags }}</strong>
+        <ul><li>{{ message.message }}</li></ul>
+    {% endfor %}
+    </div>
+    {% endif %}
     <h2 class="border-bottom py-2">{{ question.subject }}</h2>
     <div class="card my-3">
         <div class="card-body">
@@ -10,6 +18,12 @@
                     <div class="mb-2">{{ question.author.username }}</div>
                     <div>{{ question.create_date }}</div>
                 </div>
+            </div>
+            <div class="my-3">
+                {% if request.user == question.author %}
+                <a href="{% url 'pybo:question_modify' question.id  %}" 
+                   class="btn btn-sm btn-outline-secondary">수정</a>
+                {% endif %}
             </div>
         </div>
     </div>
